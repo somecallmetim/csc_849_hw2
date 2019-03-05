@@ -24,9 +24,9 @@ for item in invertedIndex:
     for docId in postingList:
         print("\t" + docId + " :", end =" ")
         indexFile.write("\t" + docId + " : ")
-        for wordPosition in postingList:
-            print(" " + wordPosition + ",", end ="")
-            indexFile.write(" " + wordPosition + ",")
+        for wordPosition in postingList[docId].getTermPositionList():
+            print(" " + str(wordPosition) + ",", end ="")
+            indexFile.write(" " + str(wordPosition) + ",")
         print("\r")
         indexFile.write("\r")
 

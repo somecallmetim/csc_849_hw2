@@ -16,6 +16,9 @@ class TermPositionListForGivenDoc:
         self.__positionList.append(numericalPosition)
         self.__termFrequency += 1
 
+    def getTermPositionList(self):
+        return self.__positionList
+
 # class to help track data for each term in our document list vocabulary
 class TermInPositionalInvertedIndex:
     # constructor
