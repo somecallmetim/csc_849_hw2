@@ -22,8 +22,8 @@ for item in invertedIndex:
     indexFile.write((item + " : " +  str(termData.getDocumentFrequency())) + "\r")
 
     for docId in postingList:
-        print("\t" + docId + " :", end =" ")
-        indexFile.write("\t" + docId + " : ")
+        print("\t" + docId + ", " + str(postingList[docId].getTermDocumentFrequency()) + " :", end =" ")
+        indexFile.write("\t" + docId + ", " + str(postingList[docId].getTermDocumentFrequency()) + " : ")
         for wordPosition in postingList[docId].getTermPositionList():
             print(" " + str(wordPosition) + ",", end ="")
             indexFile.write(" " + str(wordPosition) + ",")
