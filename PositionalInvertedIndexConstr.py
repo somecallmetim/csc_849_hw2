@@ -36,10 +36,9 @@ class TermInPositionalInvertedIndex:
         # only add the docId if it's not already in the postingList
         if docId not in self.__postingList:
             self.__postingList[docId] = TermPositionListForGivenDoc(docId, numericalPosition)
+            self.__documentFrequency += 1
         else:
             self.__postingList[docId].addPosition(numericalPosition)
-
-        self.__documentFrequency += 1
 
     def getPostingList(self):
         return self.__postingList
