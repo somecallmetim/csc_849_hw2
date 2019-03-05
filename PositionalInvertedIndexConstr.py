@@ -17,7 +17,7 @@ class TermPositionListForGivenDoc:
         self.__termFrequency += 1
 
 # class to help track data for each term in our document list vocabulary
-class TermForPositionalInvertedIndex:
+class TermInPositionalInvertedIndex:
     # constructor
     def __init__(self, name, docId, numericalPosition):
         # fields
@@ -101,7 +101,7 @@ def createPositionalInvertedIndex():
                 key = stemmer.stem(key)
                 # if key isn't in the inverted index, it creates a new object and adds it to inverted index
                 if key not in positionalInvertedIndex:
-                    positionalInvertedIndex[key] = TermForPositionalInvertedIndex(key, currentDocId, numericalPosition)
+                    positionalInvertedIndex[key] = TermInPositionalInvertedIndex(key, currentDocId, numericalPosition)
                 # if key is in positional inverted index, program attempts to add new posting
                 else:
                     positionalInvertedIndex[key].addPosting(currentDocId, numericalPosition)
