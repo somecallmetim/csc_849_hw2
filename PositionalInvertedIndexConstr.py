@@ -29,6 +29,7 @@ class TermInPositionalInvertedIndex:
         # fields
         self.__name = name
         self.__documentFrequency = 0
+        # posting list is of the format { docId : TermPositionListForGivenDoc } where value is object listed above
         self.__postingList = {}
 
         #start with the first docId the term is associated with in its postingList
