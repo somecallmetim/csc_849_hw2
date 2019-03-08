@@ -18,7 +18,7 @@ class ComplexSearchTerm:
         else:
             self.__postingList[docId] += 1
 
-    def getDf_f(self):
+    def getDf_t(self):
         return self.__df_t
 
     def get_tf(self, docId):
@@ -26,6 +26,9 @@ class ComplexSearchTerm:
             return self.__postingList[docId]
         else:
             return -1
+
+    def getPostingList(self):
+        return self.__postingList
 
 def findComplexQueries(queryString, complexQueryList):
     startOfComplexQuery = queryString.find("(")
@@ -85,7 +88,7 @@ def complexSearch(queryList, complexSearchTermData, documentList):
 
         tempQueryList = list(queryList[0].split(" "))
 
-        # initiate complext search if both query terms exist in positional inverted index
+        # initiate complex search if both query terms exist in positional inverted index
         if tempQueryList[0] in invertedIndex and tempQueryList[1] in invertedIndex:
 
             # get posting lists for both terms
@@ -102,21 +105,26 @@ def complexSearch(queryList, complexSearchTermData, documentList):
                     secondTermPositionList = secondTermPostingList[docId].getTermPositionList()
 
                     # get length of second term's posting to list to avoid boundary errors
-                    lengthOfSecondTermList = len(secondTermPostingList)
+                    lengthOfSecondTermList = len(secondTermPositionList)
                     # get iterator for second term's position list
                     pointerForSecondTermList = 0
 
                     # check each document to see if it's a match based on search terms and allowed separation
                     for position in firstTermPositionList:
-
                         # make sure we haven't overshot the boundary of the second term position list AND
                             # skip over positions in the second list until position 2 > position 1
                             # Note: if the second position isn't bigger than the first position, by default it won't
                             #       math our search query
-                        while(pointerForSecondTermList <= lengthOfSecondTermList and
-                              position > secondTermPositionList[pointerForSecondTermList]):
+                        while(position > secondTermPositionList[pointerForSecondTermList]):
+
                             # increment pointerForSecondTermList
                             pointerForSecondTermList += 1
+
+                            # make sure we don't overshoot our boundary
+                            if(pointerForSecondTermList >= lengthOfSecondTermList):
+                                # point our pointer at the last item in our secondTermPositionList
+                                pointerForSecondTermList = lengthOfSecondTermList - 1
+                                break
 
                         # check if position 2 is close enough to position 1 to register as a search hit
                         if (position - secondTermPositionList[pointerForSecondTermList]) <= allowableSeparation:
@@ -165,11 +173,11 @@ for term in invertedIndex:
 
 # set up search terms for this toy example
 searchTerms = [
-    # "nexus like love happy",
-    # "asus repair",
+    "nexus like love happy",
+    "asus repair",
     "0(touch screen) fix repair",
     "1(great tablet) 2(tablet fast)",
-    # "tablet"
+    "tablet"
 ]
 
 
@@ -185,7 +193,6 @@ for queryString in searchTerms:
     tempSearchTermResults = parseSearchQuery(queryString)
     simpleSearchTerms = tempSearchTermResults[0]
     complexSearchTerms = tempSearchTermResults[1]
-    allSearchTerms = simpleSearchTerms + complexSearchTerms
 
     # get doc list for simple search terms
     simpleSearch(simpleSearchTerms, docList)
@@ -194,6 +201,7 @@ for queryString in searchTerms:
     complexSearchTermData = {}
 
     complexSearch(complexSearchTerms, complexSearchTermData, docList)
+    allSearchTerms = simpleSearchTerms + complexSearchTerms
 
     # get doc list for complex search terms
     # calculate idf
@@ -206,24 +214,54 @@ for queryString in searchTerms:
 
     resultFile.write(queryString + "\r")
     print(queryString)
+
+    # here doclist gives us every document that has at least one of the search terms in it, whether simple or complex
+        # however, none of the documents have been scored. This is where we do that work
     for docId in docList:
+        # every document's score starts off at zero
         docScore = 0
+        # this loop will add up the document's score for every term in the original query
         for term in allSearchTerms:
-            # makes the term all lower case
-            term = str(term).lower()
-            # stems the now lower case and punctuation free word
-            term = stemmer.stem(term)
-            tempPostingList = invertedIndex[term].getPostingList()
+            # simple & complex terms are handled very differently. This block handles scoring of simple terms
+            if term not in complexSearchTerms:
 
-            if docId in tempPostingList:
-                tf = tempPostingList[docId].getTermDocumentFrequency()
-                df_t = invertedIndex[term].getDocumentFrequency()
+                # have to stem and lower case the terms here so they match the positional inverted index
+                # makes the term all lower case
+                term = str(term).lower()
+                # stems the now lower case and punctuation free word
+                term = stemmer.stem(term)
 
-                idf = math.log(totalNumberOfDocuments/df_t,10)
+                # simple terms have their associated posting lists stored in the postional inverted index.
+                    # beyond that, term frequency, tf, and document frequency, df_t, are also stored there
+                tempPostingList = invertedIndex[term].getPostingList()
 
-                tf_idf = (1 + math.log(tf, 10)) * idf
+                # if this individual term is in the given document, we increase the document's score accordingly
+                if docId in tempPostingList:
+                    tf = tempPostingList[docId].getTermDocumentFrequency()
+                    df_t = invertedIndex[term].getDocumentFrequency()
 
-                docScore += tf_idf
+                    idf = math.log(totalNumberOfDocuments / df_t, 10)
+
+                    tf_idf = (1 + math.log(tf, 10)) * idf
+
+                    docScore += tf_idf
+
+            # since complex terms aren't stored in the positional inverted index, everytime we get a query with one
+                # we needed to essentially create a temporary equivalent in an above function & object.
+                # here we do our scoring based on the tf/df_t that we previously stored in the afore mentioned object
+            else:
+                tempPostingList = complexSearchTermData[term].getPostingList()
+                if docId in tempPostingList:
+                    tf = complexSearchTermData[term].get_tf(docId)
+                    df_t = complexSearchTermData[term].getDf_t()
+
+                    idf = math.log(totalNumberOfDocuments / df_t, 10)
+
+                    tf_idf = (1 + math.log(tf, 10)) * idf
+
+                    docScore += tf_idf
+
+
 
         docListAndScore[docId] = docScore
 
