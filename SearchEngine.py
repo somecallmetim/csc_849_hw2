@@ -33,7 +33,6 @@ class ComplexSearchTerm:
 def findComplexQueries(queryString, complexQueryList):
     startOfComplexQuery = queryString.find("(")
     if startOfComplexQuery != -1:
-        numOfWordsBetween = queryString[startOfComplexQuery - 1]
         endOfComplexQuery = queryString.find(")")
 
         complexQuery = queryString[startOfComplexQuery - 1:endOfComplexQuery + 1]
@@ -202,15 +201,6 @@ for queryString in searchTerms:
 
     complexSearch(complexSearchTerms, complexSearchTermData, docList)
     allSearchTerms = simpleSearchTerms + complexSearchTerms
-
-    # get doc list for complex search terms
-    # calculate idf
-        # idf for each term -> log(N/df_t)
-            # get document frequency for each term (df_t) from TermInPositionalInvertedIndex in PositionalInvertedIndexConstr.py
-            # need total number of documents
-    # calculate tf-idf score for each doc
-        # tf -> 1 + log(tf)
-        # tf-idf -> (1 + log(tf)) * log(N/df_t)
 
     resultFile.write(queryString + "\r")
     print(queryString)
