@@ -73,11 +73,29 @@ def simpleSearch(queryList, documentList):
 def complexSearch(queryList, complexSearchTermData, documentList):
     index = 0
     for term in queryList:
-        allowableSeparation = int(term[0])
+        # you have to add a 1 to allowable separation to prevent off by one errors
+            # ie 0 allowable separation only yields results when the two terms are identical ie 0(test test)
+        allowableSeparation = int(term[0]) + 1
         cleanedUpTerm = term[2:len(term)-1]
         queryList[index] = cleanedUpTerm
 
-        tempQueryList = list(queryList[0].split(" "))
+        tempQueryList = list(queryList[index].split(" "))
+
+        tempString = ""
+
+        for term in tempQueryList:
+            # have to stem and lower case the terms here so they match the positional inverted index
+            # makes the term all lower case
+            term = str(term).lower()
+            # stems the now lower case and punctuation free word
+            term = stemmer.stem(term)
+
+            if tempString == "":
+                tempString = term
+            else:
+                tempString = tempString + " " + term
+
+        queryList[index] = tempString
 
         # initiate complex search if both query terms exist in positional inverted index
         if tempQueryList[0] in invertedIndex and tempQueryList[1] in invertedIndex:
@@ -101,12 +119,12 @@ def complexSearch(queryList, complexSearchTermData, documentList):
                     pointerForSecondTermList = 0
 
                     # check each document to see if it's a match based on search terms and allowed separation
-                    for position in firstTermPositionList:
+                    for positionOfFirstTerm in firstTermPositionList:
                         # make sure we haven't overshot the boundary of the second term position list AND
                             # skip over positions in the second list until position 2 > position 1
                             # Note: if the second position isn't bigger than the first position, by default it won't
                             #       math our search query
-                        while(position > secondTermPositionList[pointerForSecondTermList]):
+                        while(positionOfFirstTerm > secondTermPositionList[pointerForSecondTermList]):
 
                             # increment pointerForSecondTermList
                             pointerForSecondTermList += 1
@@ -118,7 +136,7 @@ def complexSearch(queryList, complexSearchTermData, documentList):
                                 break
 
                         # check if position 2 is close enough to position 1 to register as a search hit
-                        if (position - secondTermPositionList[pointerForSecondTermList]) <= allowableSeparation:
+                        if (positionOfFirstTerm < secondTermPositionList[pointerForSecondTermList] and secondTermPositionList[pointerForSecondTermList] - positionOfFirstTerm <= allowableSeparation):
                             if docId not in documentList:
                                 documentList.append(docId)
                             if cleanedUpTerm not in complexSearchTermData:
@@ -146,20 +164,16 @@ for term in invertedIndex:
     # posting list for the current term
     postingList = termData.getPostingList()
 
-    # prints/writes term name and df_t
-    # print(term + " : " +  str(termData.getDocumentFrequency()))
+    # writes term name and df_t
     indexFile.write((term + " : " +  str(termData.getDocumentFrequency())) + "\r")
 
     # for loop gets each docId associated with term and prints out term positions & frequencies
     for docId in postingList:
-        # prints/writes docId & freq of term in that specific doc
-        # print("\t" + docId + ", " + str(postingList[docId].getTermDocumentFrequency()) + " :", end =" ")
+        # writes docId & freq of term in that specific doc
         indexFile.write("\t" + docId + ", " + str(postingList[docId].getTermDocumentFrequency()) + " : ")
-        # prints out a list of each numerical position of the term in the doc
+        # writes out a list of each numerical position of the term in the doc
         for wordPosition in postingList[docId].getTermPositionList():
-            # print(" " + str(wordPosition) + ",", end ="")
             indexFile.write(" " + str(wordPosition) + ",")
-        # print("\r")
         indexFile.write("\r")
 
 # set up search terms for this toy example
