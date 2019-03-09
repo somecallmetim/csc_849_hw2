@@ -13,6 +13,7 @@ running the program
     * SearchEngine.py
     * PositionalInvertedIndexConstructor.py
     * documents.txt
+    * readme.txt
 - run "python3 SearchEngine.py"
 - there will be some output & you should now see two additional files
     * Inverted_Index.txt
