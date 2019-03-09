@@ -1,5 +1,6 @@
 import PositionalInvertedIndexConstr
 import math
+import operator
 from nltk.stem import PorterStemmer
 
 class ComplexSearchTerm:
@@ -48,18 +49,9 @@ def findComplexQueries(queryString, complexQueryList):
 def parseSearchQuery(queryString):
     searchTerms = []
     complexSearchTerms = []
-
-    # print(" - " + queryString + " - ")
-
     queryString = findComplexQueries(queryString, complexSearchTerms)
 
-    # for searchTerm in complexSearchTerms:
-    #     print("=== " + searchTerm + " ===")
-
-    # print("*** " + queryString + " ***")
-
     for term in queryString.split():
-        # print(term)
         searchTerms.append(term)
 
     return [searchTerms, complexSearchTerms]
@@ -255,6 +247,11 @@ for queryString in searchTerms:
 
         docListAndScore[docId] = docScore
 
-        resultFile.write("\tdocument " + str(docId) + " score : " + str(docScore) + "\r")
-        print("\tdocument " + str(docId) + " score : " + str(docListAndScore[docId]))
+    sortedDocListAndScore = sorted(docListAndScore.items(), key=operator.itemgetter(1), reverse=True)
+    for item in sortedDocListAndScore:
+        resultFile.write("\tdocument " + item[0] + " score : " + str(item[1]) + "\r")
+        print("\tdocument " + item[0] + " score : " + str(item[1]))
+
+
+    print("-------------------------\r\r")
 
