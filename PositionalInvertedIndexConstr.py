@@ -68,6 +68,7 @@ def remove_punctuation(value):
             result += c
     return result
 
+# function to create positional inverted index for our search engine
 def createPositionalInvertedIndex():
     stemmer = PorterStemmer()
     # this is the document (or hypothetical set of documents) we're scanning from

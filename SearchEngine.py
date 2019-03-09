@@ -3,6 +3,8 @@ import math
 import operator
 from nltk.stem import PorterStemmer
 
+
+# class temporarily tracks df_t & tf for complex search terms
 class ComplexSearchTerm:
     def __init__(self, name, docId):
         self.__name = name
@@ -31,58 +33,96 @@ class ComplexSearchTerm:
     def getPostingList(self):
         return self.__postingList
 
+
+# detects and parses the complex portions of a query string
 def findComplexQueries(queryString, complexQueryList):
+    # complex queries are of the form n(term1 term2) where 'n' is the max number of words allowed between the terms
+        # this first bit finds the position of the first '('
     startOfComplexQuery = queryString.find("(")
+    # find() returns -1 if it can't find the requested token
     if startOfComplexQuery != -1:
         endOfComplexQuery = queryString.find(")")
 
+        # gives us the portion of the query string that follows the 'n(term1 term2)' format
         complexQuery = queryString[startOfComplexQuery - 1:endOfComplexQuery + 1]
 
+        # replaces 'n(term1 term2)' in the original query with an empty string
         queryString = queryString.replace(complexQuery, "")
+        # adds the 'n(term1 term2)' string the the complex query list
         complexQueryList.append(complexQuery)
 
+        # calls this function recursively until all complex strings are found, added to the appropriate list, & removed
+            # from the query string
         return findComplexQueries(queryString, complexQueryList)
 
     else:
+        # returns original query string minus all complex terms in the form of 'n(term1 term2)'
         return queryString
 
+
+# parses the query string to pull out of the the simple and complex search terms
 def parseSearchQuery(queryString):
+    # list that stores simple search terms
     searchTerms = []
+    # list that stores complex search terms in the form of 'n(term1 term2)'
     complexSearchTerms = []
+    # finds and removes all complex search terms in the form of 'n(term1 term2)'
+        # (see findComplexQueries() for description)
     queryString = findComplexQueries(queryString, complexSearchTerms)
 
+    # split all simple search terms into individual strings and add tham to searchTerms list
     for term in queryString.split():
         searchTerms.append(term)
 
+    # return lists for both simple and complex search terms
     return [searchTerms, complexSearchTerms]
 
+
+# finds all docs that contain at least one simple search terms and put's their doc id's into a list
 def simpleSearch(queryList, documentList):
-    
+
+    # looks for each simple search term in our positional inverted index
     for term in queryList:
         # makes the term all lower case
         term = str(term).lower()
         # stems the now lower case and punctuation free word
         term = stemmer.stem(term)
 
+        # if the term exists in our positional inverted index, attempts to add its posting list to our document list
         if term in invertedIndex:
+            # create a temporary posting list from the current search term
             tempPostingLIst = invertedIndex[term].getPostingList()
+            # iterate through each doc id in our temporary posting list
             for key in tempPostingLIst:
+                # make sure the doc id isn't already in our document list
                 if key not in documentList:
+                    # adds the doc id to our doc list if it wasn't already there
                     documentList.append(key)
 
+# finds all docs that contain hits to our complex search terms
 def complexSearch(queryList, complexSearchTermData, documentList):
+    # we keep track of the index to allow us to manipulate the query list that was passed in so we only have
+        # to do our stemming and other string clean up work in just one place. This is by no means the cleanest
+        # way to do this, but I ran out of time to go back and come up with a cleaner implementation
     index = 0
+    # parse and do search for every complex term in our query list
     for term in queryList:
-        # you have to add a 1 to allowable separation to prevent off by one errors
+        # you have to add a 1 to "allowable separation" to prevent off by one errors
             # ie 0 allowable separation only yields results when the two terms are identical ie 0(test test)
+            # when it should yield results for 0(term1 term2) when they are directly next to one another
         allowableSeparation = int(term[0]) + 1
+        # terms come in the form 'n(term1 term2)'. This strips off the extraneous data & punctuation to leave
+            # only 'term1 term2'
         cleanedUpTerm = term[2:len(term)-1]
+        # replaces n(term1 term2) in our original query list with 'term1 term2'
         queryList[index] = cleanedUpTerm
 
+        # splits our query string into individual terms so we can stem and otherwise parse
         tempQueryList = list(queryList[index].split(" "))
 
         tempString = ""
 
+        # this for loop does our stemming & then also adds the updated terms back into our original query list
         for term in tempQueryList:
             # have to stem and lower case the terms here so they match the positional inverted index
             # makes the term all lower case
@@ -90,11 +130,14 @@ def complexSearch(queryList, complexSearchTermData, documentList):
             # stems the now lower case and punctuation free word
             term = stemmer.stem(term)
 
+            # if tempString is empty, puts the term in
             if tempString == "":
                 tempString = term
+            # if there is at least one term already in tempString, adds a space and the current term to the string
             else:
                 tempString = tempString + " " + term
 
+        # adds the stemmed lower case terms back into our original query list
         queryList[index] = tempString
 
         # initiate complex search if both query terms exist in positional inverted index
@@ -136,6 +179,10 @@ def complexSearch(queryList, complexSearchTermData, documentList):
                                 break
 
                         # check if position 2 is close enough to position 1 to register as a search hit
+                            # Note: both checks here are necessary as the pointer defaults to pointing at the last
+                            #       index in the second position list & that value may be smaller than the position of
+                            #       the first term. This is not the cleanest way to do this, but I ran out of time
+                            #       to clean it up
                         if (positionOfFirstTerm < secondTermPositionList[pointerForSecondTermList] and secondTermPositionList[pointerForSecondTermList] - positionOfFirstTerm <= allowableSeparation):
                             if docId not in documentList:
                                 documentList.append(docId)
@@ -186,12 +233,13 @@ searchTerms = [
 ]
 
 
-
+# run search for each query string in the above list of search strings
 for queryString in searchTerms:
-
+    # keeps track of documents that have search hits
     docList = []
+    # lets us track of document scores
     docListAndScore = {}
-    docListByScore = []
+    # in this toy example there are exactly 10 "documents." We need this number in future calculations
     totalNumberOfDocuments = 10.0
 
     # get simple and complex search terms
@@ -205,9 +253,13 @@ for queryString in searchTerms:
     # will help track df_t & idf for complex search terms
     complexSearchTermData = {}
 
+    # get doc list for complex search terms
     complexSearch(complexSearchTerms, complexSearchTermData, docList)
+
+    # combine doc lists for simple and complex search terms
     allSearchTerms = simpleSearchTerms + complexSearchTerms
 
+    # write/print original query string to console and Results_File.txt
     resultFile.write(queryString + "\r")
     print(queryString)
 
@@ -232,6 +284,7 @@ for queryString in searchTerms:
                 tempPostingList = invertedIndex[term].getPostingList()
 
                 # if this individual term is in the given document, we increase the document's score accordingly
+                    # this block is all about calculating tf-idf for simple search terms
                 if docId in tempPostingList:
                     tf = tempPostingList[docId].getTermDocumentFrequency()
                     df_t = invertedIndex[term].getDocumentFrequency()
@@ -242,9 +295,7 @@ for queryString in searchTerms:
 
                     docScore += tf_idf
 
-            # since complex terms aren't stored in the positional inverted index, everytime we get a query with one
-                # we needed to essentially create a temporary equivalent in an above function & object.
-                # here we do our scoring based on the tf/df_t that we previously stored in the afore mentioned object
+            # This block handles scoring of complex search terms using tf-idf
             else:
                 tempPostingList = complexSearchTermData[term].getPostingList()
                 if docId in tempPostingList:
@@ -257,11 +308,14 @@ for queryString in searchTerms:
 
                     docScore += tf_idf
 
-
-
+        # sets score for the current document
         docListAndScore[docId] = docScore
 
+    # turns the dict we used for document id's & scores into a list of tuples and then sorts them by their score
+        # largest to smallest
     sortedDocListAndScore = sorted(docListAndScore.items(), key=operator.itemgetter(1), reverse=True)
+
+    # writes/prints results to console & Results_File.txt
     for item in sortedDocListAndScore:
         resultFile.write("\tdocument " + item[0] + " score : " + str(item[1]) + "\r")
         print("\tdocument " + item[0] + " score : " + str(item[1]))
